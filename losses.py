@@ -24,7 +24,7 @@ class NerfWLoss(nn.Module):
         b_l: beta loss (2nd term in equation 13)
         s_l: sigma loss (3rd term in equation 13)
     """
-    def __init__(self, coef=1, lambda_u=0.01):
+    def __init__(self, coef=1, lambda_u=0.00001):
         """
         lambda_u: in equation 13
         """

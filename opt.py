@@ -6,7 +6,7 @@ def get_opts():
     parser.add_argument('--root_dir', type=str, required=True,
                         help='root directory of dataset')
     parser.add_argument('--dataset_name', type=str, default='blender',
-                        choices=['blender', 'phototourism'],
+                        choices=['blender', 'phototourism', 'cryoem'],
                         help='which dataset to train/val')
     # for blender
     parser.add_argument('--data_perturb', nargs="+", type=str, default=[],
@@ -58,7 +58,7 @@ def get_opts():
                         help='chunk size to split the input to avoid OOM')
     parser.add_argument('--num_epochs', type=int, default=16,
                         help='number of training epochs')
-    parser.add_argument('--num_gpus', type=int, default=1,
+    parser.add_argument('--num_gpus', type=str, default='1',
                         help='number of gpus')
 
     parser.add_argument('--ckpt_path', type=str, default=None,

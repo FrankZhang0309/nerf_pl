@@ -24,6 +24,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import TestTubeLogger
 
+import pdb
+
 
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
@@ -158,12 +160,17 @@ class NeRFSystem(LightningModule):
             if self.hparams.dataset_name == 'phototourism':
                 WH = batch['img_wh']
                 W, H = WH[0, 0].item(), WH[0, 1].item()
+            elif self.hparams.dataset_name == 'cryoem':
+                W,H = 256, 256
             else:
                 W, H = self.hparams.img_wh
             img = results[f'rgb_{typ}'].view(H, W, 3).permute(2, 0, 1).cpu() # (3, H, W)
             img_gt = rgbs.view(H, W, 3).permute(2, 0, 1).cpu() # (3, H, W)
             depth = visualize_depth(results[f'depth_{typ}'].view(H, W)) # (3, H, W)
-            stack = torch.stack([img_gt, img, depth]) # (3, 3, H, W)
+            # pdb.set_trace()
+            static_img = results[f'_rgb_fine_static'].view(H, W, 3).permute(2, 0, 1).cpu()
+            transient_img =  results[f'_rgb_fine_transient'].view(H, W, 3).permute(2, 0, 1).cpu()
+            stack = torch.stack([img_gt, img, static_img, transient_img, depth]) # (3, 3, H, W)
             self.logger.experiment.add_images('val/GT_pred_depth',
                                                stack, self.global_step)
 
@@ -201,11 +208,12 @@ def main(hparams):
                       logger=logger,
                       weights_summary=None,
                       progress_bar_refresh_rate=hparams.refresh_every,
-                      gpus=hparams.num_gpus,
-                      accelerator='ddp' if hparams.num_gpus>1 else None,
+                      gpus=eval(hparams.num_gpus),
+                    #   accelerator='ddp' if eval(hparams.num_gpus)>1 else None,
                       num_sanity_val_steps=1,
                       benchmark=True,
-                      profiler="simple" if hparams.num_gpus==1 else None)
+                    #   profiler="simple" if eval(hparams.num_gpus==1) else None,
+                      val_check_interval=0.01)
 
     trainer.fit(system)
 

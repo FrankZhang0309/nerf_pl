@@ -1,5 +1,6 @@
 import torch
 from einops import rearrange, reduce, repeat
+import pdb
 
 __all__ = ['render_rays']
 
@@ -137,23 +138,34 @@ def render_rays(models,
         delta_inf = 1e2 * torch.ones_like(deltas[:, :1]) # (N_rays, 1) the last delta is infinity
         deltas = torch.cat([deltas, delta_inf], -1)  # (N_rays, N_samples_)
 
+        # Original
+        # if output_transient:
+        #     static_alphas = 1-torch.exp(-deltas*static_sigmas)
+        #     transient_alphas = 1-torch.exp(-deltas*transient_sigmas)
+        #     alphas = 1-torch.exp(-deltas*(static_sigmas+transient_sigmas))
+        # else:
+        #     noise = torch.randn_like(static_sigmas) * noise_std
+        #     alphas = 1-torch.exp(-deltas*torch.relu(static_sigmas+noise))
+        
+        # alphas_shifted = \
+        #     torch.cat([torch.ones_like(alphas[:, :1]), 1-alphas], -1) # [1, 1-a1, 1-a2, ...]
+        # transmittance = torch.cumprod(alphas_shifted[:, :-1], -1) # [1, 1-a1, (1-a1)(1-a2), ...]
+
+        # if output_transient:
+        #     static_weights = static_alphas * transmittance
+        #     transient_weights = transient_alphas * transmittance
+        
+        # weights = alphas * transmittance
+        # Modified
         if output_transient:
-            static_alphas = 1-torch.exp(-deltas*static_sigmas)
-            transient_alphas = 1-torch.exp(-deltas*transient_sigmas)
-            alphas = 1-torch.exp(-deltas*(static_sigmas+transient_sigmas))
+            static_weights = deltas * static_sigmas
+            transient_weights = deltas * transient_sigmas
+            weights = deltas * (static_sigmas + transient_sigmas)
         else:
             noise = torch.randn_like(static_sigmas) * noise_std
-            alphas = 1-torch.exp(-deltas*torch.relu(static_sigmas+noise))
+            weights = deltas * (static_sigmas + noise)
 
-        alphas_shifted = \
-            torch.cat([torch.ones_like(alphas[:, :1]), 1-alphas], -1) # [1, 1-a1, 1-a2, ...]
-        transmittance = torch.cumprod(alphas_shifted[:, :-1], -1) # [1, 1-a1, (1-a1)(1-a2), ...]
-
-        if output_transient:
-            static_weights = static_alphas * transmittance
-            transient_weights = transient_alphas * transmittance
-
-        weights = alphas * transmittance
+        # ---------------------------------------------------
         weights_sum = reduce(weights, 'n1 n2 -> n1', 'sum')
 
         results[f'weights_{typ}'] = weights
@@ -264,6 +276,7 @@ def render_rays(models,
         xyz_fine = rays_o + rays_d * rearrange(z_vals, 'n1 n2 -> n1 n2 1')
 
         model = models['fine']
+        # pdb.set_trace()
         if model.encode_appearance:
             if 'a_embedded' in kwargs:
                 a_embedded = kwargs['a_embedded']
